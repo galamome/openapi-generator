@@ -119,6 +119,9 @@ public class OpenAPINormalizer {
     // the allOf contains a new schema containing the properties in the top level
     final String REFACTOR_ALLOF_WITH_PROPERTIES_ONLY = "REFACTOR_ALLOF_WITH_PROPERTIES_ONLY";
 
+    // when set to true, remove the "properties" of a schema with type "array"
+    final String REMOVE_PROPERTIES_FROM_TYPE_ARRAY = "REMOVE_PROPERTIES_FROM_TYPE_ARRAY";
+
     // when set to true, normalize OpenAPI 3.1 spec to make it work with the generator
     final String NORMALIZE_31SPEC = "NORMALIZE_31SPEC";
 
@@ -205,6 +208,7 @@ public class OpenAPINormalizer {
         ruleNames.add(FILTER);
         ruleNames.add(SET_CONTAINER_TO_NULLABLE);
         ruleNames.add(SET_PRIMITIVE_TYPES_TO_NULLABLE);
+        ruleNames.add(REMOVE_PROPERTIES_FROM_TYPE_ARRAY);
 
 
         // rules that are default to true
@@ -816,7 +820,8 @@ public class OpenAPINormalizer {
     }
 
     protected Schema normalizeArraySchema(Schema schema) {
-        Schema result = processNormalize31Spec(schema, new HashSet<>());
+        Schema arrayWithoutPropertiesSchema = processNormalizeArrayWithProperties(schema);
+        Schema result = processNormalize31Spec(arrayWithoutPropertiesSchema, new HashSet<>());
         return processSetArraytoNullable(result);
     }
 
@@ -1639,6 +1644,30 @@ public class OpenAPINormalizer {
                         LOGGER.error("Please report the issue via https://github.com/OpenAPITools/openapi-generator/issues/new/.");
                 }
             }
+        }
+
+        return schema;
+    }
+
+    /**
+     * When set to true, remove "properties" attribute on array schema
+     * since it should be ignored and may result in odd generated code
+     *
+     * @param schema         Schema
+     * @return Schema
+     */
+    protected Schema processNormalizeArrayWithProperties(Schema schema) {
+        if (!getRule(REMOVE_PROPERTIES_FROM_TYPE_ARRAY)) {
+            return schema;
+        }
+
+        if (schema == null) {
+            return null;
+        }
+
+        if (schema instanceof ArraySchema) {
+            schema.setProperties(null);
+            return schema;
         }
 
         return schema;
